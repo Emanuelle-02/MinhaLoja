@@ -1,0 +1,187 @@
+{% extends 'base_adm.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %} - {{ title }} {% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb" style="background-color: #F0F2F5; border: 1px solid #6B7280; border-radius: 0.35rem;">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}" style="color: #374151;">MinhaLoja</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'movimentacao_list' %}" style="color: #374151;">Movimentações de Estoque</a></li>
+            <li class="breadcrumb-item active" aria-current="page" style="color: #374151;">{{ title }}</li>
+        </ol>
+    </nav>
+
+    <!-- Form -->
+    <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280; transition: transform 0.2s;">
+        <div class="card-header py-3" style="background-color: #F0F2F5; border-bottom: 2px solid #6B7280;">
+            <h6 class="m-0 font-weight-bold" style="color: #374151;">{{ title }}</h6>
+        </div>
+        <div class="card-body">
+            {% if form.errors or form.non_field_errors %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-color: #6B7280; background-color: #FEE2E2; color: #374151;">
+                    <strong>Por favor, corrija os erros abaixo:</strong>
+                    <ul class="mb-0">
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                                <li>{{ field.label }}: {{ error|escape }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                            <li>{{ error|escape }}</li>
+                        {% endfor %}
+                    </ul>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endif %}
+
+            {% if messages %}
+                <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-color: #6B7280; background-color: #F0F2F5; color: #374151;">
+                    {% for message in messages %}
+                        <span>{{ message }}</span>
+                    {% endfor %}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endif %}
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {{ form|crispy }}
+                <div class="form-group row mb-3">
+                    <label class="col-md-2 col-form-label font-weight-bold" style="color: #374151;">Preço de Venda (Trocado):</label>
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="preco_venda_trocado" readonly>
+                    </div>
+                </div>
+                <div class="form-group row mb-3">
+                    <label class="col-md-2 col-form-label font-weight-bold" style="color: #374151;">Preço de Venda (Substituto):</label>
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="preco_venda_substituto" readonly>
+                    </div>
+                </div>
+                <div class="form-group row mb-3">
+                    <label class="col-md-2 col-form-label font-weight-bold" style="color: #374151;">Diferença de Preço:</label>
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="diferenca_preco" readonly>
+                    </div>
+                </div>
+                <div class="form-group row mb-3">
+                    <div class="col-md-2"></div>
+                    <div class="col-md-6">
+                        <button type="submit" class="btn btn-sm" style="background-color: #8B5CF6; color: #F0F2F5; border-color: #8B5CF6;">
+                            <i class="fas fa-save mr-1"></i> Salvar
+                        </button>
+                        <a href="{% url 'movimentacao_list' %}" class="btn btn-sm" style="background-color: #6B7280; color: #F0F2F5; border-color: #6B7280;">
+                            <i class="fas fa-times mr-1"></i> Cancelar
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const variacaoTrocadaSelect = document.getElementById('id_variacao_trocada');
+    const quantidadeTrocadaInput = document.getElementById('id_quantidade_trocada');
+    const variacaoSubstitutaSelect = document.getElementById('id_variacao_substituta');
+    const quantidadeSubstitutaInput = document.getElementById('id_quantidade_substituta');
+    const precoVendaTrocadoInput = document.getElementById('preco_venda_trocado');
+    const precoVendaSubstitutoInput = document.getElementById('preco_venda_substituto');
+    const diferencaPrecoInput = document.getElementById('diferenca_preco');
+    const productsData = JSON.parse(variacaoSubstitutaSelect.getAttribute('data-products'));
+
+    function updatePriceFields() {
+        const variacaoTrocadaId = variacaoTrocadaSelect.value;
+        const quantidadeTrocada = parseInt(quantidadeTrocadaInput.value) || 0;
+        const variacaoSubstitutaId = variacaoSubstitutaSelect.value;
+        const quantidadeSubstituta = parseInt(quantidadeSubstitutaInput.value) || 0;
+
+        let precoVendaTrocado = 0;
+        let precoVendaSubstituto = 0;
+
+        if (variacaoTrocadaId && productsData[variacaoTrocadaId]) {
+            precoVendaTrocado = parseFloat(productsData[variacaoTrocadaId].preco_venda) * quantidadeTrocada;
+            precoVendaTrocadoInput.value = precoVendaTrocado.toFixed(2);
+        } else {
+            precoVendaTrocadoInput.value = '';
+        }
+
+        if (variacaoSubstitutaId && productsData[variacaoSubstitutaId]) {
+            precoVendaSubstituto = parseFloat(productsData[variacaoSubstitutaId].preco_venda) * quantidadeSubstituta;
+            precoVendaSubstitutoInput.value = precoVendaSubstituto.toFixed(2);
+        } else {
+            precoVendaSubstitutoInput.value = '';
+        }
+
+        if (precoVendaTrocado && precoVendaSubstituto) {
+            const diferenca = precoVendaSubstituto - precoVendaTrocado;
+            if (diferenca > 0) {
+                diferencaPrecoInput.value = `Cliente deve pagar: R$ ${diferenca.toFixed(2)}`;
+            } else if (diferenca < 0) {
+                diferencaPrecoInput.value = `Loja deve pagar: R$ ${Math.abs(diferenca).toFixed(2)}`;
+            } else {
+                diferencaPrecoInput.value = 'Sem diferença de preço';
+            }
+        } else {
+            diferencaPrecoInput.value = '';
+        }
+    }
+
+    variacaoTrocadaSelect.addEventListener('change', updatePriceFields);
+    quantidadeTrocadaInput.addEventListener('input', updatePriceFields);
+    variacaoSubstitutaSelect.addEventListener('change', updatePriceFields);
+    quantidadeSubstitutaInput.addEventListener('input', updatePriceFields);
+    updatePriceFields(); // Run on page load
+});
+</script>
+
+<style>
+    .form-group label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-group .form-control {
+        max-width: 500px;
+        border-color: #6B7280;
+        color: #374151;
+    }
+
+    .form-group .form-control:focus {
+        border-color: #8B5CF6;
+        box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25);
+    }
+
+    .alert-dismissible .close {
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        color: #374151;
+    }
+
+    .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(107, 114, 128, 0.2);
+    }
+
+    .btn:hover {
+        background-color: #7C3AED;
+        border-color: #7C3AED;
+    }
+
+    @media (max-width: 767.98px) {
+        .card {
+            margin-bottom: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}

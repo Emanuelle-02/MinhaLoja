@@ -1,0 +1,74 @@
+{% extends 'base_adm.html' %}
+{% load static %}
+
+{% block title %} - Dashboard {% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Dashboard</h2>
+    <div class="row">
+        <!-- Total Produtos -->
+        <div class="col-md-3">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-header">Total Produtos</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ total_produtos }}</h5>
+                    <p class="card-text">Itens em estoque</p>
+                </div>
+            </div>
+        </div>
+        <!-- Vendas Hoje -->
+        <div class="col-md-3">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-header">Vendas Hoje</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ vendas_hoje }}</h5>
+                    <p class="card-text">Vendas realizadas hoje</p>
+                </div>
+            </div>
+        </div>
+        <!-- Estoque Baixo -->
+        <div class="col-md-3">
+            <div class="card text-white bg-warning mb-3">
+                <div class="card-header">Estoque Baixo</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ estoque_baixo }}</h5>
+                    <p class="card-text">Produtos com estoque baixo</p>
+                </div>
+            </div>
+        </div>
+        <!-- Vendas do Mês -->
+        <div class="col-md-3">
+            <div class="card text-white bg-info mb-3">
+                <div class="card-header">Vendas do Mês</div>
+                <div class="card-body">
+                    <h5 class="card-title">R$ {{ valor_vendas_mes|floatformat:2 }}</h5>
+                    <p class="card-text">Valor total das vendas do mês</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <!-- Saldo Total -->
+        <div class="col-md-6">
+            <div class="card text-white bg-secondary mb-3">
+                <div class="card-header">Saldo Total</div>
+                <div class="card-body">
+                    <h5 class="card-title">R$ {{ saldo_total|floatformat:2 }}</h5>
+                    <p class="card-text">Saldo líquido (entradas - saídas)</p>
+                </div>
+            </div>
+        </div>
+        <!-- Lucro em Caixa -->
+        <div class="col-md-6">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-header">Lucro em Caixa</div>
+                <div class="card-body">
+                    <h5 class="card-title">R$ {{ lucro_caixa|floatformat:2 }}</h5>
+                    <p class="card-text">Lucro total das vendas (venda - custo)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

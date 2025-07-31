@@ -1,0 +1,189 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Sistema de Gerenciamento de Loja">
+    <meta name="author" content="MinhaLoja">
+    <title>MinhaLoja - Seu controle, sua facilidade</title>
+    <!-- SB Admin 2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <script src="https://use.fontawesome.com/releases/v6.1.0/js/all.js" crossorigin="anonymous"></script>
+    <!-- Custom CSS -->
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet">
+    <style>
+        /* Fundo com gradiente geométrico ajustado para maior contraste e neutralidade */
+        body {
+            display: flex;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #F0F2F5 0%, #F0F2F5 50%, #FFFFFF 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 10s ease infinite;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 0%; }
+            50% { background-position: 100% 100%; }
+            100% { background-position: 0% 0%; }
+        }
+        .container {
+            margin: auto;
+        }
+        /* Ajuste para a imagem à esquerda com borda mais destacada */
+        .bg-login-image {
+            background: url("{% static 'images/logo.png' %}") no-repeat center center;
+            background-size: 80%;
+            background-color: #e3e3eb;
+            border-right: 3px solid #6B7280; /* Aumentado para 3px para maior destaque geométrico */
+            border-left: 3px solid #6B7280; /* Adicionado para simetria */
+        }
+        /* Ajuste de altura e espaçamento do formulário com padding responsivo */
+        .card-body .p-5 {
+            padding: 3rem 2.5rem !important; /* Reduzido levemente para mobile */
+        }
+        @media (max-width: 768px) {
+            .card-body .p-5 {
+                padding: 2rem 1.5rem !important; /* Ajuste para telas menores */
+            }
+        }
+        .form-group {
+            margin-bottom: 1.75rem; /* Levemente reduzido para fluidez */
+        }
+        /* Estilo personalizado para os campos de entrada com foco em acessibilidade */
+        .custom-input {
+            border: 2px solid #6B7280;
+            border-radius: 10px;
+            padding: 0.75rem 1.25rem;
+            font-size: 1rem;
+            width: 100%;
+            box-shadow: none;
+            transition: border-color 0.3s ease;
+            background-color: #FFFFFF;
+            color: #374151; /* Ajustado para maior contraste */
+        }
+        .custom-input:focus {
+            border-color: #8B5CF6; /* Roxo vibrante para destaque */
+            outline: none;
+            box-shadow: 0 0 5px rgba(139, 92, 246, 0.3); /* Sombra sutil para feedback */
+        }
+        /* Estilo personalizado para o botão com hover mais suave */
+        .custom-btn {
+            background-color: #8B5CF6;
+            border: none;
+            border-radius: 25px;
+            padding: 0.75rem;
+            font-size: 1rem;
+            color: #FFFFFF;
+            width: 100%;
+            transition: background-color 0.3s ease, transform 0.2s ease; /* Adicionado transform */
+        }
+        .custom-btn:hover {
+            background-color: #7C3AED; /* Roxo mais escuro */
+            transform: scale(1.02); /* Efeito de escala sutil */
+        }
+        /* Estilo do logo com ajuste de responsividade */
+        .logo-container {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .logo-container img {
+            max-width: 150px;
+            max-height: 150px; /* Adicionado para controle de altura */
+        }
+        @media (max-width: 768px) {
+            .logo-container img {
+                max-width: 100px; /* Reduzido para mobile */
+            }
+        }
+        /* Ajuste do título com foco em acessibilidade */
+        .text-center h1 {
+            font-size: 1.5rem;
+            color: #374151; /* Ajustado para maior contraste */
+            margin-bottom: 2rem;
+            font-weight: 600;
+            text-transform: uppercase; /* Maiúsculas para estilo geométrico */
+        }
+        /* Ajuste para mensagens de erro com estilo aprimorado */
+        .alert {
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            border-radius: 10px;
+            border: 1px solid #6B7280;
+            background-color: #F9FAFB; /* Fundo mais claro para legibilidade */
+            padding: 1rem;
+        }
+        .alert .close {
+            color: #374151;
+            opacity: 0.8;
+        }
+        /* Adiciona um toque geométrico ao card com sombra */
+        .card {
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #6B7280;
+            box-shadow: 0 4px 6px rgba(107, 114, 128, 0.1); /* Sombra sutil */
+        }
+        /* Ajuste para responsividade geral */
+        @media (max-width: 768px) {
+            .col-lg-6 {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+            .bg-login-image {
+                display: none; /* Oculta imagem em telas menores */
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-primary">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-xl-10 col-lg-12 col-md-9">
+                <div class="card o-hidden shadow-lg">
+                    <div class="card-body p-0">
+                        <div class="row">
+                            <div class="col-lg-6 d-none d-lg-block bg-login-image"></div>
+                            <div class="col-lg-6">
+                                <div class="p-5">
+                                    <div class="logo-container">
+                                        <!--img src="{% static 'images/logo-minhaloja.png' %}" alt="MinhaLoja Logo"-->
+                                    </div>
+                                    <div class="text-center">
+                                        <h1 class="h4">Login</h1>
+                                    </div>
+                                    <form method="POST">
+                                        {% csrf_token %}
+                                        {% if messages %}
+                                            {% for message in messages %}
+                                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                                    {{ message }}
+                                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                                        <span aria-hidden="true">×</span>
+                                                    </button>
+                                                </div>
+                                            {% endfor %}
+                                        {% endif %}
+                                        <div class="form-group">
+                                            <input type="text" class="custom-input" id="username" name="username" placeholder="Nome de usuário" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <input type="password" class="custom-input" id="password" name="password" placeholder="Senha" required>
+                                        </div>
+                                        <button type="submit" class="custom-btn">Login</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/js/sb-admin-2.min.js"></script>
+</body>
+</html>

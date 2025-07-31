@@ -1,0 +1,111 @@
+{% extends 'base_adm.html' %}
+{% load static %}
+
+{% block title %} - {{ title }} {% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb" style="background-color: #F0F2F5; border: 1px solid #6B7280; border-radius: 0.35rem;">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}" style="color: #374151;">MinhaLoja</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'produto_list' %}" style="color: #374151;">Meus Produtos</a></li>
+            <li class="breadcrumb-item active" aria-current="page" style="color: #374151;">{{ title }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 font-weight-bold" style="color: #374151;">{{ title }}</h2>
+    </div>
+
+    <!-- Product Details -->
+    <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280;">
+        <div class="card-header py-3" style="background-color: #F0F2F5; border-bottom: 2px solid #6B7280;">
+            <h6 class="m-0 font-weight-bold" style="color: #374151;">Detalhes do Produto</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Nome:</strong> {{ produto.nome }}</p>
+                    <p><strong>Código:</strong> {{ produto.codigo|default:"-" }}</p>
+                    <p><strong>Categoria:</strong> {{ produto.categoria }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Preço de Custo:</strong> R$ {{ produto.preco_custo|floatformat:2 }}</p>
+                    <p><strong>Preço de Venda:</strong> R$ {{ produto.preco_venda|floatformat:2 }}</p>
+                    <p><strong>Estoque Mínimo:</strong> {{ produto.estoque_minimo }}</p>
+                    <p><strong>Ativo:</strong> {% if produto.is_active %}Sim{% else %}Não{% endif %}</p>
+                </div>
+            </div>
+            <a href="{% url 'produto_list' %}" class="btn btn-sm" style="background-color: #6B7280; color: #F0F2F5; border-color: #6B7280;">
+                <i class="fas fa-arrow-left mr-1"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <!-- Variations -->
+    <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280;">
+        <div class="card-header py-3" style="background-color: #F0F2F5; border-bottom: 2px solid #6B7280;">
+            <h6 class="m-0 font-weight-bold" style="color: #374151;">Variações do Produto</h6>
+        </div>
+        <div class="card-body">
+            {% if produto.variacao_set.all %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" style="color: #374151;">
+                        <thead style="background-color: #F0F2F5;">
+                            <tr>
+                                <th>Tamanho</th>
+                                <th>Cor</th>
+                                <th>Quantidade</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for variacao in produto.variacao_set.all %}
+                                <tr>
+                                    <td>{{ variacao.tamanho|default:"-" }}</td>
+                                    <td>{{ variacao.cor|default:"-" }}</td>
+                                    <td>{{ variacao.quantidade }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-center" style="color: #374151;">Nenhuma variação cadastrada para este produto.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .table th, .table td {
+        border: 1px solid #6B7280;
+    }
+
+    .btn:hover {
+        background-color: #7C3AED;
+        border-color: #7C3AED;
+    }
+
+    .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(107, 114, 128, 0.2);
+    }
+
+    @media (max-width: 767.98px) {
+        .card {
+            margin-bottom: 1.5rem;
+        }
+        .row {
+            flex-direction: column;
+        }
+        .col-md-6 {
+            margin-bottom: 1rem;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+    }
+</style>
+{% endblock %}

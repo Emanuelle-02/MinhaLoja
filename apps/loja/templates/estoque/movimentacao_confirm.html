@@ -1,0 +1,131 @@
+{% extends 'base_adm.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %} - Confirmar Movimentação {% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb" style="background-color: #F0F2F5; border: 1px solid #6B7280; border-radius: 0.35rem;">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}" style="color: #374151;">MinhaLoja</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'movimentacao_list' %}" style="color: #374151;">Movimentações de Estoque</a></li>
+            <li class="breadcrumb-item active" aria-current="page" style="color: #374151;">Confirmar Movimentação</li>
+        </ol>
+    </nav>
+
+    <!-- Form -->
+    <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280; transition: transform 0.2s;">
+        <div class="card-header py-3" style="background-color: #F0F2F5; border-bottom: 2px solid #6B7280;">
+            <h6 class="m-0 font-weight-bold" style="color: #374151;">Confirmar Movimentação</h6>
+        </div>
+        <div class="card-body">
+            {% if messages %}
+                <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-color: #6B7280; background-color: #F0F2F5; color: #374151;">
+                    {% for message in messages %}
+                        <span>{{ message }}</span>
+                    {% endfor %}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endif %}
+
+            {% if form.errors or form.non_field_errors %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-color: #6B7280; background-color: #FEE2E2; color: #374151;">
+                    <strong>Por favor, corrija os erros abaixo:</strong>
+                    <ul class="mb-0">
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                                <li>{{ field.label }}: {{ error|escape }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                            <li>{{ error|escape }}</li>
+                        {% endfor %}
+                    </ul>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label class="font-weight-600" style="color: #374151;">Produto e Variação:</label>
+                <p>{{ movimentacao.variacao.produto.nome }} ({{ movimentacao.variacao.tamanho|default:'-' }}/{{ movimentacao.variacao.cor|default:'-' }})</p>
+            </div>
+            <div class="form-group">
+                <label class="font-weight-600" style="color: #374151;">Quantidade:</label>
+                <p>{{ movimentacao.quantidade }}</p>
+            </div>
+            <div class="form-group">
+                <label class="font-weight-600" style="color: #374151;">Motivo:</label>
+                <p>{{ movimentacao.motivo|default:"Nenhum motivo informado" }}</p>
+            </div>
+            <div class="form-group">
+                <label class="font-weight-600" style="color: #374151;">Preço de Custo:</label>
+                <p>Atual: R$ {{ preco_custo|floatformat:2|default:"Não informado" }} (Anterior: R$ {{ preco_custo_anterior|floatformat:2 }})</p>
+            </div>
+            <div class="form-group">
+                <label class="font-weight-600" style="color: #374151;">Preço de Venda:</label>
+                <p>Atual: R$ {{ preco_venda|floatformat:2|default:"Não informado" }} (Anterior: R$ {{ preco_venda_anterior|floatformat:2 }})</p>
+            </div>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="confirm" value="true">
+                <input type="hidden" name="variacao" value="{{ movimentacao.variacao.id }}">
+                <input type="hidden" name="quantidade" value="{{ movimentacao.quantidade }}">
+                <input type="hidden" name="motivo" value="{{ movimentacao.motivo|default:'' }}">
+                <input type="hidden" name="preco_custo" value="{{ preco_custo|default:movimentacao.variacao.produto.preco_custo }}">
+                <input type="hidden" name="preco_venda" value="{{ preco_venda|default:movimentacao.variacao.produto.preco_venda }}">
+                <div class="form-group row mb-3">
+                    <div class="col-md-2"></div>
+                    <div class="col-md-6">
+                        <button type="submit" class="btn btn-sm" style="background-color: #8B5CF6; color: #F0F2F5; border-color: #8B5CF6;">
+                            <i class="fas fa-check mr-1"></i> Confirmar
+                        </button>
+                        <a href="{% url 'movimentacao_create' %}" class="btn btn-sm" style="background-color: #6B7280; color: #F0F2F5; border-color: #6B7280;">
+                            <i class="fas fa-times mr-1"></i> Cancelar
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-group label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-group p {
+        max-width: 500px;
+        border-color: #6B7280;
+        color: #374151;
+        padding: 0.5rem;
+        background-color: #FFFFFF;
+        border-radius: 0.25rem;
+    }
+
+    .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(107, 114, 128, 0.2);
+    }
+
+    .btn:hover {
+        background-color: #7C3AED;
+        border-color: #7C3AED;
+    }
+
+    @media (max-width: 767.98px) {
+        .card {
+            margin-bottom: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}

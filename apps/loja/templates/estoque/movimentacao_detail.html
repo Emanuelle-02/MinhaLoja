@@ -1,0 +1,179 @@
+{% extends 'base_adm.html' %}
+{% load static %}
+
+{% block title %} - {{ title }} {% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb" style="background-color: #F0F2F5; border: 1px solid #6B7280; border-radius: 0.35rem;">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}" style="color: #374151;">MinhaLoja</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'movimentacao_list' %}" style="color: #374151;">Movimentações de Estoque</a></li>
+            <li class="breadcrumb-item active" aria-current="page" style="color: #374151;">{{ title }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 font-weight-bold" style="color: #374151;">{{ title }}</h2>
+    </div>
+
+    <!-- Movimentacao Details -->
+    <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280;">
+        <div class="card-header py-3" style="background-color: #F0F2F5; border-bottom: 2px solid #6B7280;">
+            <h6 class="m-0 font-weight-bold" style="color: #374151;">Detalhes da Movimentação</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Data:</strong> {{ movimentacao.data|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Produto:</strong> {{ movimentacao.produto }}</p>
+                    <p><strong>Variação:</strong> {{ movimentacao.variacao|default:"-" }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Tipo:</strong> 
+                        <span class="{% if movimentacao.tipo == 'E' %}bg-danger{% else %}bg-success{% endif %} text-white px-2 py-1 rounded" style="font-weight: bold;">
+                            {{ movimentacao.get_tipo_display }}
+                        </span>
+                    </p>
+                    <p><strong>Quantidade:</strong> {{ movimentacao.quantidade }}</p>
+                    <p><strong>Motivo:</strong> {{ movimentacao.motivo|default:"-" }}</p>
+                </div>
+            </div>
+            <a href="{% url 'movimentacao_list' %}" class="btn btn-sm" style="background-color: #6B7280; color: #F0F2F5; border-color: #6B7280;">
+                <i class="fas fa-arrow-left mr-1"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <!-- Related Movements -->
+    <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280;">
+        <div class="card-header py-3" style="background-color: #F0F2F5; border-bottom: 2px solid #6B7280;">
+            <h6 class="m-0 font-weight-bold" style="color: #374151;">Movimentações Relacionadas</h6>
+        </div>
+        <div class="card-body">
+            {% if related_movements %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" style="color: #374151;">
+                        <thead style="background-color: #F0F2F5;">
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Quantidade</th>
+                                <th>Motivo</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for related in related_movements %}
+                                <tr>
+                                    <td>{{ related.data|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        <span class="{% if related.tipo == 'E' %}bg-danger{% else %}bg-success{% endif %} text-white px-2 py-1 rounded" style="font-weight: bold;">
+                                            {{ related.get_tipo_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ related.quantidade }}</td>
+                                    <td>{{ related.motivo|default:"-" }}</td>
+                                    <td>
+                                        <a href="{% url 'movimentacao_detail' related.pk %}" class="btn btn-sm" style="background-color: #8B5CF6; color: #F0F2F5; border-color: #8B5CF6;">
+                                            <i class="fas fa-eye"></i> Visualizar
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination for Related Movements -->
+                {% if related_movements.has_other_pages %}
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center mt-3">
+                            {% if related_movements.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?related_page=1" aria-label="First">
+                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?related_page={{ related_movements.previous_page_number }}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in related_movements.paginator.page_range %}
+                                <li class="page-item {% if related_movements.number == num %}active{% endif %}">
+                                    <a class="page-link" href="?related_page={{ num }}">{{ num }}</a>
+                                </li>
+                            {% endfor %}
+
+                            {% if related_movements.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?related_page={{ related_movements.next_page_number }}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?related_page={{ related_movements.paginator.num_pages }}" aria-label="Last">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <p class="text-center" style="color: #374151;">Nenhuma movimentação relacionada encontrada.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .table th, .table td {
+        border: 1px solid #6B7280;
+    }
+
+    .bg-danger {
+        background-color: #DC2626 !important; /* Softer red for Entrada */
+    }
+
+    .bg-success {
+        background-color: #16A34A !important; /* Softer green for Saída */
+    }
+
+    .btn:hover {
+        background-color: #7C3AED;
+        border-color: #7C3AED;
+    }
+
+    .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(107, 114, 128, 0.2);
+    }
+
+    @media (max-width: 767.98px) {
+        .card {
+            margin-bottom: 1.5rem;
+        }
+        .row {
+            flex-direction: column;
+        }
+        .col-md-6 {
+            margin-bottom: 1rem;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .pagination {
+            flex-wrap: wrap;
+        }
+        .page-item {
+            margin-bottom: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends 'base_adm.html' %}
+{% load static %}
+
+{% block title %} - Detalhes da Venda #{{ venda.id }} {% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb" style="background-color: #F0F2F5; border: 1px solid #6B7280; border-radius: 0.35rem;">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}" style="color: #374151;">MinhaLoja</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'venda_list' %}" style="color: #374151;">Minhas Vendas</a></li>
+            <li class="breadcrumb-item active" style="color: #374151;">Detalhes da Venda #{{ venda.id }}</li>
+        </ol>
+    </nav>
+
+    <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280;">
+        <div class="card-header py-3" style="background-color: #F0F2F5; border-bottom: 2px solid #6B7280;">
+            <h6 class="m-0 font-weight-bold" style="color: #374151;">Informações da Venda #{{ venda.id }}</h6>
+        </div>
+        <div class="card-body">
+            <p><strong>Cliente:</strong> {{ venda.nome_cliente|default:"Não informado" }}</p>
+            <p><strong>Forma de Pagamento:</strong> {{ venda.get_forma_pagamento_display }}</p>
+            {% if desconto and desconto > 0 %}
+                <p><strong>Valor Total Original:</strong> R$ {{ venda.valor_total|add:desconto|floatformat:2 }}</p>
+                <p><strong>Valor Total Após Desconto:</strong> R$ {{ venda.valor_total|floatformat:2 }}</p>
+                <p><strong>Desconto Aplicado:</strong> R$ {{ desconto|floatformat:2 }}</p>
+            {% else %}
+                <p><strong>Valor Total:</strong> R$ {{ venda.valor_total|floatformat:2 }}</p>
+            {% endif %}
+            {% if venda.forma_pagamento == 'DIN' %}
+                <p><strong>Valor Recebido:</strong> R$ {{ venda.valor_recebido|default:"Não aplicável"|floatformat:2 }}</p>
+                <p><strong>Troco:</strong> R$ {{ venda.troco|default:"Não aplicável"|floatformat:2 }}</p>
+            {% else %}
+                <p><strong>Valor Recebido:</strong> Não aplicável</p>
+                <p><strong>Troco:</strong> Não aplicável</p>
+            {% endif %}
+            <p><strong>Data:</strong> {{ venda.data|date:"d/m/Y H:i" }}</p>
+        </div>
+    </div>
+
+    <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280;">
+        <div class="card-header py-3" style="background-color: #F0F2F5; border-bottom: 2px solid #6B7280;">
+            <h6 class="m-0 font-weight-bold" style="color: #374151;">Itens Vendidos</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" style="color: #374151;">
+                    <thead style="background-color: #F0F2F5;">
+                        <tr>
+                            <th>Produto</th>
+                            <th>Categoria</th>
+                            <th>Variação</th>
+                            <th>Quantidade</th>
+                            <th>Preço Unitário</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.produto.nome }}</td>
+                            <td>{{ item.produto.categoria.nome }}</td>
+                            <td>{{ item.variacao.tamanho }} / {{ item.variacao.cor }}</td>
+                            <td>{{ item.quantidade }}</td>
+                            <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                            <td>R$ {{ item.subtotal|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6">Nenhum item encontrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280;">
+        <div class="card-header py-3" style="background-color: #F0F2F5; border-bottom: 2px solid #6B7280;">
+            <h6 class="m-0 font-weight-bold" style="color: #374151;">Movimentações de Caixa</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" style="color: #374151;">
+                    <thead style="background-color: #F0F2F5;">
+                        <tr>
+                            <th>Data</th>
+                            <th>Tipo</th>
+                            <th>Valor</th>
+                            <th>Forma de Pagamento</th>
+                            <th>Motivo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mov in movimentacoes_caixa %}
+                        <tr>
+                            <td>{{ mov.data|date:"d/m/Y H:i" }}</td>
+                            <td>{{ mov.get_tipo_display }}</td>
+                            <td>R$ {{ mov.valor|floatformat:2 }}</td>
+                            <td>{{ mov.venda.get_forma_pagamento_display }}</td>
+                            <td>Venda</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5">Nenhuma movimentação de caixa encontrada.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280;">
+        <div class="card-header py-3" style="background-color: #F0F2F5; border-bottom: 2px solid #6B7280;">
+            <h6 class="m-0 font-weight-bold" style="color: #374151;">Movimentações de Estoque</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" style="color: #374151;">
+                    <thead style="background-color: #F0F2F5;">
+                        <tr>
+                            <th>Data</th>
+                            <th>Tipo</th>
+                            <th>Quantidade</th>
+                            <th>Produto</th>
+                            <th>Variação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mov in movimentacoes_estoque %}
+                        <tr>
+                            <td>{{ mov.data|date:"d/m/Y H:i" }}</td>
+                            <td>{{ mov.get_tipo_display }}</td>
+                            <td>{{ mov.quantidade }}</td>
+                            <td>{{ mov.variacao.produto.nome }}</td>
+                            <td>{{ mov.variacao.tamanho }} / {{ mov.variacao.cor }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5">Nenhuma movimentação de estoque encontrada.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <a href="{% url 'venda_list' %}" class="btn btn-sm" style="background-color: #6B7280; color: #F0F2F5;">Voltar</a>
+</div>
+
+<style>
+    .table th, .table td { border-color: #6B7280; }
+    .btn:hover { background-color: #7C3AED; border-color: #7C3AED; }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(107, 114, 128, 0.2); }
+    @media (max-width: 767.98px) { .card { margin-bottom: 1.5rem; } }
+</style>
+{% endblock %}

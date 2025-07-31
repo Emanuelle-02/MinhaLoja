@@ -1,0 +1,170 @@
+{% extends 'base_adm.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+{% load loja_filters %}
+
+{% block title %} - {{ title }} {% endblock %}
+
+{% block content %}
+    <div class="container mt-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'index' %}">MinhaLoja</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'venda_list' %}">Minhas Vendas</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+            </ol>
+        </nav>
+
+        <h2>{{ title }}</h2>
+
+        {% if form.errors or form.non_field_errors %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Corrija os erros:</strong>
+            <ul>
+                {% for error in form.non_field_errors %}
+                    <li>{{ error|escape }}</li>
+                {% endfor %}
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <li>{{ field.label }}: {{ error|escape }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>Itens da Venda</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Variação</th>
+                            <th>Quantidade</th>
+                            <th>Preço de Venda</th>
+                            <th>Subtotal</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in carrinho %}
+                        <tr>
+                            <td>{{ item.produto_nome }}</td>
+                            <td>{{ item.variacao_nome }}</td>
+                            <td>{{ item.quantidade }}</td>
+                            <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                            <td>R$ {{ item.quantidade|multiply:item.preco_unitario|floatformat:2 }}</td>
+                            <td>
+                                <form action="{% url 'venda_concluir' %}" method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="remove_item" value="{{ forloop.counter0 }}">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja remover este item?');">
+                                        <i class="fas fa-trash"></i> Deletar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        <tr>
+                            <td colspan="5" class="text-end"><strong>Valor Total:</strong></td>
+                            <td>R$ {{ valor_total|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="5" class="text-end"><strong>Valor Final (após desconto):</strong></td>
+                            <td>R$ <span id="valor_final">{{ valor_total|floatformat:2 }}</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5>Detalhes da Venda</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.nome_cliente|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.forma_pagamento|as_crispy_field }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.desconto|as_crispy_field }}
+                        </div>
+                    </div>
+                    <div class="row" id="dinheiro_fields" style="display: none;">
+                        <div class="col-md-6">
+                            {{ form.valor_recebido|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.troco|as_crispy_field }}
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col">
+                            <button type="submit" class="btn btn-primary">Salvar</button>
+                            <a href="{% url 'venda_registrar' %}" class="btn btn-secondary">Voltar</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const formaPagamento = document.getElementById('id_forma_pagamento');
+            const dinheiroFields = document.getElementById('dinheiro_fields');
+            const descontoInput = document.getElementById('id_desconto');
+            const valorRecebidoInput = document.getElementById('id_valor_recebido');
+            const trocoInput = document.getElementById('id_troco');
+            const valorFinalSpan = document.getElementById('valor_final');
+            const valorTotal = {{ valor_total|floatformat:2 }};
+
+            function updateFields() {
+                // Show/hide dinheiro fields based on payment method
+                if (formaPagamento.value === 'DIN') {
+                    dinheiroFields.style.display = 'block';
+                    valorRecebidoInput.required = true;
+                } else {
+                    dinheiroFields.style.display = 'none';
+                    valorRecebidoInput.required = false;
+                    valorRecebidoInput.value = '';
+                    trocoInput.value = '';
+                }
+
+                // Calculate valor final with discount
+                const desconto = parseFloat(descontoInput.value) || 0;
+                const valorFinal = valorTotal - desconto; // Ensure subtraction
+                valorFinalSpan.textContent = valorFinal.toFixed(2);
+
+                // Calculate troco only if in DIN mode and values are valid
+                if (formaPagamento.value === 'DIN' && valorRecebidoInput.value) {
+                    const valorRecebido = parseFloat(valorRecebidoInput.value) || 0;
+                    const troco = valorRecebido - valorFinal; // Troco based on adjusted valorFinal
+                    trocoInput.value = troco >= 0 ? troco.toFixed(2) : '0.00';
+                } else if (formaPagamento.value !== 'DIN') {
+                    trocoInput.value = '';
+                }
+            }
+
+            // Add event listeners
+            formaPagamento.addEventListener('change', updateFields);
+            descontoInput.addEventListener('input', updateFields);
+            valorRecebidoInput.addEventListener('input', updateFields);
+
+            // Initialize on page load
+            updateFields();
+        });
+    </script>
+{% endblock %}
