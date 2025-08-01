@@ -112,43 +112,7 @@
         </div>
     </div>
 
-    <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280;">
-        <div class="card-header py-3" style="background-color: #F0F2F5; border-bottom: 2px solid #6B7280;">
-            <h6 class="m-0 font-weight-bold" style="color: #374151;">Movimentações de Estoque</h6>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered" style="color: #374151;">
-                    <thead style="background-color: #F0F2F5;">
-                        <tr>
-                            <th>Data</th>
-                            <th>Tipo</th>
-                            <th>Quantidade</th>
-                            <th>Produto</th>
-                            <th>Variação</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for mov in movimentacoes_estoque %}
-                        <tr>
-                            <td>{{ mov.data|date:"d/m/Y H:i" }}</td>
-                            <td>{{ mov.get_tipo_display }}</td>
-                            <td>{{ mov.quantidade }}</td>
-                            <td>{{ mov.variacao.produto.nome }}</td>
-                            <td>{{ mov.variacao.tamanho }} / {{ mov.variacao.cor }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5">Nenhuma movimentação de estoque encontrada.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <a href="{% url 'venda_list' %}" class="btn btn-sm" style="background-color: #6B7280; color: #F0F2F5;">Voltar</a>
+    <a href="{% url 'venda_list' %}" class="btn btn-sm mb-5" style="background-color: #6B7280; color: #F0F2F5;">Voltar</a>
 </div>
 
 <style>

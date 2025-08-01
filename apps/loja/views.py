@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 class Index(LoginRequiredMixin, View):
     def get(self, request):
+        current_date = timezone.localdate()
+        current_month = current_date.month
+        current_year = current_date.year
         # Calcular entradas (vendas + movimentações de caixa do tipo ENTRADA para trocas)
         total_entradas_vendas = Venda.objects.filter(is_active=True).aggregate(total_entradas=Sum('valor_total'))['total_entradas'] or 0
         total_entradas_caixa = MovimentacaoCaixa.objects.filter(
@@ -44,32 +47,30 @@ class Index(LoginRequiredMixin, View):
 
         total_produtos = Variacao.objects.filter(produto__is_active=True).aggregate(total=Sum('quantidade'))['total'] or 0
 
-        # Calcula lucro total (lucro_caixa) usando historico de custo
-        lucro_caixa = ItemVenda.objects.filter(venda__is_active=True).aggregate(
-            total_profit=Sum((F('preco_unitario') - F('preco_custo_historico')) * F('quantidade'))
-        )['total_profit'] or 0
-
-        logger.debug(f"Total Entradas (Venda): {total_entradas_vendas} (from {Venda.objects.filter(is_active=True).count()} records)")
-        logger.debug(f"Total Entradas (MovimentacaoCaixa ENTRADA, troca): {total_entradas_caixa} (from {MovimentacaoCaixa.objects.filter(is_active=True, tipo='ENTRADA', descricao__startswith='Troca: diferença de preço recebida').count()} records)")
-        logger.debug(f"Total Saídas (Despesa): {total_saidas} (from {Despesa.objects.filter(is_active=True).count()} records)")
-        logger.debug(f"Saldo Total: {saldo_total}")
-        logger.debug(f"Lucro Caixa (Profit): {lucro_caixa}")
-        logger.debug(f"Total Produtos (Estoque): {total_produtos}")
-        logger.debug("Sample Venda records:")
-        for venda in Venda.objects.filter(is_active=True)[:5]:
-            logger.debug(f"  Venda ID: {venda.id}, Valor Total: {venda.valor_total}, Data: {venda.data}")
-        logger.debug("Sample MovimentacaoCaixa ENTRADA records (troca):")
-        for movimentacao in MovimentacaoCaixa.objects.filter(is_active=True, tipo='ENTRADA', descricao__startswith='Troca: diferença de preço recebida')[:5]:
-            logger.debug(f"  MovimentacaoCaixa ID: {movimentacao.id}, Valor: {movimentacao.valor}, Descrição: {movimentacao.descricao}, Data: {movimentacao.data}")
-        logger.debug("Sample Despesa records:")
-        for despesa in Despesa.objects.filter(is_active=True)[:5]:
-            logger.debug(f"  Despesa ID: {despesa.id}, Valor: {despesa.valor}, Descrição: {despesa.descricao}, Data: {despesa.data}")
+                # Calcula lucro total (lucro_caixa) com desconto e movimentações de troca
+        gross_profit = ItemVenda.objects.filter(venda__is_active=True).aggregate(
+            total_gross_profit=Sum((F('preco_unitario') - F('preco_custo_historico')) * F('quantidade'))
+        )['total_gross_profit'] or 0
+        total_discount = Venda.objects.filter(is_active=True).aggregate(total_discount=Sum('desconto'))['total_discount'] or 0
+        total_saidas_troca = Despesa.objects.filter(
+            is_active=True,
+            descricao__contains='Troca'  # Use Despesa to match saldo_total behavior
+        ).aggregate(total_saidas=Sum('valor'))['total_saidas'] or 0
+        lucro_caixa = gross_profit - total_discount + total_entradas_caixa - total_saidas_troca
+        
+        # Calcular valor_vendas_mes com mês e ano explícito
+        vendas_mes = Venda.objects.filter(
+            is_active=True,
+            data__month=current_month,
+            data__year=current_year
+        )
+        valor_vendas_mes = vendas_mes.aggregate(total=Sum('valor_total'))['total'] or 0
 
         context = {
             'total_produtos': total_produtos,
             'vendas_hoje': Venda.objects.filter(is_active=True, data__date=timezone.now().date()).count(),
             'estoque_baixo': Produto.objects.filter(is_active=True, variacao__quantidade__lt=F('estoque_minimo')).distinct().count(),
-            'valor_vendas_mes': Venda.objects.filter(is_active=True, data__month=timezone.now().month).aggregate(total=Sum('valor_total'))['total'] or 0,
+            'valor_vendas_mes': valor_vendas_mes,
             'saldo_total': saldo_total,
             'lucro_caixa': lucro_caixa,
             'request': request,
@@ -437,6 +438,9 @@ class MovimentacaoDetailView(LoginRequiredMixin, DetailView):
         movimentacao_caixa = None
         despesa = None
         quantidade_trocada = None
+        # Inicializa variáveis para evitar UnboundLocalError
+        preco_unitario_venda = None
+        valor_total_venda = None
         if self.object.motivo == 'troca':
             # Procura por MovimentacaoCaixa associada (Diferença de preço recebida pelo lojista)
             movimentacao_caixa = MovimentacaoCaixa.objects.filter(
@@ -474,18 +478,37 @@ class MovimentacaoDetailView(LoginRequiredMixin, DetailView):
                 ).first()
                 quantidade_trocada = self.object.quantidade if related_entry else None
         elif self.object.motivo == 'compra':
-            # Produra por Despesa associada para compra
+            # Procura por Despesa associada para compra
             despesa = Despesa.objects.filter(
                 variacao=self.object.variacao,
                 is_active=True,
                 data__gte=self.object.data - timezone.timedelta(seconds=1),
                 data__lte=self.object.data + timezone.timedelta(seconds=1)
             ).first()
-            
+        elif self.object.motivo == 'Saída por venda':
+            # Procura por Venda associada por data, produto e variação
+            venda = Venda.objects.filter(
+                is_active=True,
+                data__gte=self.object.data - timezone.timedelta(seconds=1),
+                data__lte=self.object.data + timezone.timedelta(seconds=1),
+                itemvenda__produto=self.object.produto,
+                itemvenda__variacao=self.object.variacao
+            ).first()
+            if venda:
+                item_venda = ItemVenda.objects.filter(
+                    venda=venda,
+                    variacao=self.object.variacao
+                ).first()
+                if item_venda:
+                    preco_unitario_venda = item_venda.preco_unitario
+                    valor_total_venda = item_venda.preco_unitario * self.object.quantidade  # Use MovimentacaoEstoque.quantidade
+                    
         context['related_movements'] = related_movements_paginated
         context['movimentacao_caixa'] = movimentacao_caixa
         context['despesa'] = despesa
         context['quantidade_trocada'] = quantidade_trocada
+        context['preco_unitario_venda'] = preco_unitario_venda
+        context['valor_total_venda'] = valor_total_venda
         return context
 
 class MovimentacaoEstoqueCreateView(LoginRequiredMixin, CreateView):

@@ -39,7 +39,22 @@
                     </p>
                     <p><strong>Quantidade:</strong> {{ movimentacao.quantidade }}</p>
                     <p><strong>Motivo:</strong> {{ movimentacao.get_motivo_display|default:"-" }}</p>
-                    {% if movimentacao.motivo == 'troca' %}
+                    {% if movimentacao.motivo == 'Saída por venda' %}
+                        <p><strong>Preço Unitário de Venda:</strong> 
+                            {% if preco_unitario_venda %}
+                                R$ {{ preco_unitario_venda|floatformat:2 }}
+                            {% else %}
+                                Não registrado
+                            {% endif %}
+                        </p>
+                        <p><strong>Valor Total da Venda:</strong> 
+                            {% if valor_total_venda %}
+                                R$ {{ valor_total_venda|floatformat:2 }}
+                            {% else %}
+                                Não registrado
+                            {% endif %}
+                        </p>
+                    {% elif movimentacao.motivo == 'troca' %}
                         <p><strong>Produto Trocado:</strong> 
                             {% if movimentacao.produto_trocado %}
                                 {{ movimentacao.produto_trocado.produto }} - {{ movimentacao.produto_trocado }}{% if quantidade_trocada %} - Quantidade: {{ quantidade_trocada }}{% else %} - Quantidade: Não registrada{% endif %}
