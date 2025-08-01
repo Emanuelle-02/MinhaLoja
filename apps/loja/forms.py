@@ -101,7 +101,7 @@ class VariacaoForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        preco_custo = kwargs.pop('preco_custo', '0')  # Default to '0' if not provided
+        preco_custo = kwargs.pop('preco_custo', '0')  # Default preco_custo para '0' caso não informado
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
@@ -109,9 +109,9 @@ class VariacaoForm(forms.ModelForm):
         self.helper.layout = Layout(
             Div('tamanho', 'cor', 'quantidade', 'total_custo', css_class='row')
         )
-        # Set data-preco-custo attribute for JavaScript calculation
+        # Set atributo data-preco-custo para cálculo com JavaScript
         try:
-            if self.instance.pk and self.instance.produto_id:  # Check produto_id to avoid RelatedObjectDoesNotExist
+            if self.instance.pk and self.instance.produto_id:  # Checa produto_id para evitar erro RelatedObjectDoesNotExist
                 self.fields['quantidade'].widget.attrs['data-preco-custo'] = str(self.instance.produto.preco_custo)
             else:
                 self.fields['quantidade'].widget.attrs['data-preco-custo'] = str(preco_custo)
@@ -124,7 +124,7 @@ class VariacaoFormSet(forms.BaseInlineFormSet):
         self.preco_custo = kwargs.pop('preco_custo', '0')
         super().__init__(*args, **kwargs)
         for form in self.forms:
-            form.preco_custo = self.preco_custo  # Pass preco_custo to each form
+            form.preco_custo = self.preco_custo  # Passa preco_custo para cada form
 
     def clean(self):
         super().clean()
@@ -242,9 +242,9 @@ class MovimentacaoEstoqueForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Customize the display of variacao choices to include product details
+        # Customiza o display de escolhas de variação para incluir detalhes do produto
         self.fields['variacao'].label_from_instance = lambda obj: f"{obj.produto.nome} ({obj.produto.categoria.nome}) - {obj.tamanho or '-'}/{obj.cor or '-'}"
-        # Populate product data for JavaScript (for preco_custo and preco_venda)
+        # Populate dados do proputo para JavaScript (for preco_custo e preco_venda)
         products_data = {
             str(v.id): {
                 'preco_custo': str(v.produto.preco_custo),
@@ -281,7 +281,7 @@ class ItemCarrinhoForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Customize display to include product and variation details
+        # Costuomiza display para incluir detalhes de produto e variação
         self.fields['variacao'].label_from_instance = lambda obj: f"{obj.produto.nome} ({obj.produto.categoria.nome}) - {obj.tamanho or '-'}/{obj.cor or '-'} (Estoque: {obj.quantidade})"
 
     def clean(self):
@@ -296,7 +296,7 @@ class ItemCarrinhoForm(forms.Form):
             raise forms.ValidationError("Preencha todos os campos (produto e variação e quantidade).")
         return cleaned_data
 
-class VendaForm(forms.ModelForm):  # Remove duplicate definition
+class VendaForm(forms.ModelForm):  # Remove definição duplicada
     valor_recebido = forms.DecimalField(
         max_digits=10, decimal_places=2, required=False,
         widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Valor recebido (R$)'})

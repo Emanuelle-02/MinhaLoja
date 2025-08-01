@@ -54,7 +54,7 @@ class Variacao(models.Model):
             logger.warning("Recursion detected, exiting save.")
             return
         self._saving = True
-        is_sale = kwargs.pop('is_sale', False)  # Flag to indicate if triggered by sale
+        is_sale = kwargs.pop('is_sale', False)  # Flag para indicar if ativado por venda
         is_from_view = kwargs.pop('is_from_view', False)  # Nova flag para view
 
         try:
@@ -71,7 +71,7 @@ class Variacao(models.Model):
             super().save(*args, **kwargs)
             diff = self.quantidade - old_quantidade
 
-            # Create stock movement only if not triggered by a sale or view
+            # Cria movimento de estoque apenas se não for ativado por venda ou view
             if diff != 0 and not is_sale and not is_from_view:
                 logger.debug(f"Updated variation: diff={diff}, creating MovimentacaoEstoque")
                 MovimentacaoEstoque.objects.create(
@@ -82,7 +82,7 @@ class Variacao(models.Model):
                     motivo=f"{'Entrada' if diff > 0 else 'Saída'} via atualização de variação"
                 )
 
-            # Despesa logic only for non-sale, non-view changes
+            # Despesa lógica apenas para mudanças non-sale, non-view
             if not is_sale and not is_from_view:
                 despesa_description = f"Compra inicial de {self.quantidade} unidades de {self.produto.nome} ({self.tamanho}/{self.cor})"
                 despesa_valor = self.produto.preco_custo * self.quantidade
@@ -197,19 +197,19 @@ class ItemVenda(models.Model):
                     variacao=old_item.variacao,
                     quantidade=old_item.quantidade,
                     tipo='E',
-                    motivo=f"Reversão de venda {self.venda.id} (edição)"  # Changed from 'motive' to 'motivo'
+                    motivo=f"Reversão de venda {self.venda.id} (edição)"  
                 )
         if self.variacao:  # Nova ou edição
             if not self.pk:  # Novo item
                 self.preco_custo_historico = self.variacao.produto.preco_custo
             self.variacao.quantidade -= self.quantidade
-            self.variacao.save(is_sale=True)  # Pass is_sale=True for sales
+            self.variacao.save(is_sale=True)  # Pass is_sale=True para vendas
             MovimentacaoEstoque.objects.create(
                 produto=self.produto,
                 variacao=self.variacao,
                 quantidade=self.quantidade,
                 tipo='S',
-                motivo=f"Saída por venda {self.venda.id}"  # Changed from 'motive' to 'motivo'
+                motivo=f"Saída por venda"  
             )
         super().save(*args, **kwargs)
 
@@ -222,7 +222,7 @@ class ItemVenda(models.Model):
                 variacao=self.variacao,
                 quantidade=self.quantidade,
                 tipo='E',
-                motivo=f"Reversão de venda {self.venda.id} (exclusão)"  # Changed from 'motive' to 'motivo'
+                motivo=f"Reversão de venda {self.venda.id} (exclusão)"  
             )
         super().delete(*args, **kwargs)
 

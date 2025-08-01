@@ -32,13 +32,50 @@
                     <p><strong>Variação:</strong> {{ movimentacao.variacao|default:"-" }}</p>
                 </div>
                 <div class="col-md-6">
-                    <p><strong>Tipo:</strong> 
+                    <p><strong>Tipo:</strong>
                         <span class="{% if movimentacao.tipo == 'E' %}bg-danger{% else %}bg-success{% endif %} text-white px-2 py-1 rounded" style="font-weight: bold;">
                             {{ movimentacao.get_tipo_display }}
                         </span>
                     </p>
                     <p><strong>Quantidade:</strong> {{ movimentacao.quantidade }}</p>
-                    <p><strong>Motivo:</strong> {{ movimentacao.motivo|default:"-" }}</p>
+                    <p><strong>Motivo:</strong> {{ movimentacao.get_motivo_display|default:"-" }}</p>
+                    {% if movimentacao.motivo == 'troca' %}
+                        <p><strong>Produto Trocado:</strong> 
+                            {% if movimentacao.produto_trocado %}
+                                {{ movimentacao.produto_trocado.produto }} - {{ movimentacao.produto_trocado }}{% if quantidade_trocada %} - Quantidade: {{ quantidade_trocada }}{% else %} - Quantidade: Não registrada{% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </p>
+                        <p><strong>Diferença de Preço:</strong> 
+                            {% if movimentacao.diferenca_preco %}
+                                R$ {{ movimentacao.diferenca_preco|floatformat:2 }}
+                                {% if movimentacao.diferenca_preco > 0 %}
+                                    (Recebido do cliente)
+                                {% elif movimentacao.diferenca_preco < 0 %}
+                                    (Pago ao cliente)
+                                {% endif %}
+                            {% else %}
+                                R$ 0,00
+                            {% endif %}
+                        </p>
+                        {% if movimentacao_caixa %}
+                            <p><strong>Movimentação de Caixa:</strong> {{ movimentacao_caixa.descricao }} (R$ {{ movimentacao_caixa.valor|floatformat:2 }})</p>
+                        {% endif %}
+                        {% if despesa %}
+                            <p><strong>Despesa Associada:</strong> {{ despesa.descricao }} (R$ {{ despesa.valor|floatformat:2 }})</p>
+                        {% endif %}
+                    {% elif movimentacao.motivo == 'compra' %}
+                        <p><strong>Despesa Associada:</strong> 
+                            {% if despesa %}
+                                {{ movimentacao.quantidade }} {{ movimentacao.produto }} a R$ {{ movimentacao.produto.preco_custo|floatformat:2 }} cada foi um custo de R$ {{ despesa.valor|floatformat:2 }}
+                            {% else %}
+                                Nenhuma despesa associada
+                            {% endif %}
+                        </p>
+                    {% elif movimentacao.motivo == 'devolucao' %}
+                        <p><strong>Nota de Devolução:</strong> Em processamento (pendente de integração)</p>
+                    {% endif %}
                 </div>
             </div>
             <a href="{% url 'movimentacao_list' %}" class="btn btn-sm" style="background-color: #6B7280; color: #F0F2F5; border-color: #6B7280;">
@@ -75,7 +112,7 @@
                                         </span>
                                     </td>
                                     <td>{{ related.quantidade }}</td>
-                                    <td>{{ related.motivo|default:"-" }}</td>
+                                    <td>{{ related.get_motivo_display|default:"-" }}</td>
                                     <td>
                                         <a href="{% url 'movimentacao_detail' related.pk %}" class="btn btn-sm" style="background-color: #8B5CF6; color: #F0F2F5; border-color: #8B5CF6;">
                                             <i class="fas fa-eye"></i> Visualizar
@@ -86,7 +123,6 @@
                         </tbody>
                     </table>
                 </div>
-
                 <!-- Pagination for Related Movements -->
                 {% if related_movements.has_other_pages %}
                     <nav aria-label="Page navigation">
@@ -103,13 +139,11 @@
                                     </a>
                                 </li>
                             {% endif %}
-
                             {% for num in related_movements.paginator.page_range %}
                                 <li class="page-item {% if related_movements.number == num %}active{% endif %}">
                                     <a class="page-link" href="?related_page={{ num }}">{{ num }}</a>
                                 </li>
                             {% endfor %}
-
                             {% if related_movements.has_next %}
                                 <li class="page-item">
                                     <a class="page-link" href="?related_page={{ related_movements.next_page_number }}" aria-label="Next">
@@ -136,25 +170,20 @@
     .table th, .table td {
         border: 1px solid #6B7280;
     }
-
     .bg-danger {
         background-color: #DC2626 !important; /* Softer red for Entrada */
     }
-
     .bg-success {
         background-color: #16A34A !important; /* Softer green for Saída */
     }
-
     .btn:hover {
         background-color: #7C3AED;
         border-color: #7C3AED;
     }
-
     .card:hover {
         transform: translateY(-3px);
         box-shadow: 0 5px 15px rgba(107, 114, 128, 0.2);
     }
-
     @media (max-width: 767.98px) {
         .card {
             margin-bottom: 1.5rem;

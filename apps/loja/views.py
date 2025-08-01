@@ -44,7 +44,7 @@ class Index(LoginRequiredMixin, View):
 
         total_produtos = Variacao.objects.filter(produto__is_active=True).aggregate(total=Sum('quantidade'))['total'] or 0
 
-        # Calculate true profit (lucro_caixa) using historical cost
+        # Calcula lucro total (lucro_caixa) usando historico de custo
         lucro_caixa = ItemVenda.objects.filter(venda__is_active=True).aggregate(
             total_profit=Sum((F('preco_unitario') - F('preco_custo_historico')) * F('quantidade'))
         )['total_profit'] or 0
@@ -88,10 +88,10 @@ class VendaDetailView(LoginRequiredMixin, DetailView):
         context['movimentacoes_estoque'] = MovimentacaoEstoque.objects.filter(
             motivo__contains=f"venda {self.object.id}"
         )
-        # Calculate subtotals in the view
+        # Calcula subtotal na view
         for item in context['items']:
             item.subtotal = item.quantidade * item.preco_unitario
-        # Add desconto to context
+        # Adiciona desconto to context
         context['desconto'] = self.object.desconto if hasattr(self.object, 'desconto') and self.object.desconto else 0
         return context
     
@@ -122,7 +122,7 @@ class ProdutoListView(LoginRequiredMixin, ListView):
     context_object_name = 'produtos'
     paginate_by = 10
     def get_queryset(self):
-        # Annotate products with total stock and sales flag
+        # Anota produtos com estoque total e bandeira de vendas
         return Produto.objects.filter(is_active=True).annotate(
             total_stock=Sum('variacao__quantidade'),
             has_sales_annotation=Exists(ItemVenda.objects.filter(variacao__produto=OuterRef('pk')))
@@ -163,7 +163,7 @@ class ProdutoCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         logger.debug("Processing form_valid in ProdutoCreateView")
         with transaction.atomic():
-            # Disconnect signal to prevent interference
+            # Disconecta o sinal para evitar interferências
             post_save.disconnect(update_despesas_on_preco_custo_change, sender=Produto)
             try:
                 self.object = form.save()
@@ -234,8 +234,8 @@ class VendaListView(LoginRequiredMixin, ListView):
     model = Venda
     template_name = 'caixa/venda_list.html'
     context_object_name = 'vendas'
-    queryset = Venda.objects.filter(is_active=True).order_by('-data')  # Order by newest first
-    paginate_by = 10  # Consistent with other list views
+    queryset = Venda.objects.filter(is_active=True).order_by('-data')  # Ordenada da mais recente para mais antiga
+    paginate_by = 10 
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -345,7 +345,7 @@ class VendaConcluirView(LoginRequiredMixin, View):
                     return self.form_invalid(request, form, carrinho)
                 if form.cleaned_data['forma_pagamento'] == 'DIN':
                     venda.valor_recebido = form.cleaned_data['valor_recebido']
-                    venda.troco = form.cleaned_data['troco']  # Use troco from form
+                    venda.troco = form.cleaned_data['troco']  # Use troco do form
                 venda.save()
                 for item in carrinho:
                     variacao = Variacao.objects.select_for_update().get(id=item['variacao_id'])
@@ -397,7 +397,7 @@ class MovimentacaoEstoqueListView(LoginRequiredMixin, ListView):
     model = MovimentacaoEstoque
     template_name = 'estoque/movimentacao_list.html'
     context_object_name = 'movimentacoes'
-    queryset = MovimentacaoEstoque.objects.filter(is_active=True).order_by('-data')  # Newest first
+    queryset = MovimentacaoEstoque.objects.filter(is_active=True).order_by('-data')  # Mais recente ao mais antigo
     paginate_by = 10
 
     def get_context_data(self, **kwargs):
@@ -409,21 +409,21 @@ class MovimentacaoDetailView(LoginRequiredMixin, DetailView):
     model = MovimentacaoEstoque
     template_name = 'estoque/movimentacao_detail.html'
     context_object_name = 'movimentacao'
-    queryset = MovimentacaoEstoque.objects.filter(is_active=True)
-    paginate_by = 10  # Pagination for related movements
+    queryset = MovimentacaoEstoque.objects.filter(is_active=True).order_by('-data')
+    paginate_by = 10  # Pagination para movimentações relacionadas
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = f'Detalhes da Movimentação {self.object.pk}'
-        
-        # Get related movements (same product and variation, excluding current)
+
+        # Pega movimentações relacionadas (mesmo produto e variação, com exceção do atual)
         related_movements = MovimentacaoEstoque.objects.filter(
             Q(produto=self.object.produto) &
             Q(variacao=self.object.variacao) &
             Q(is_active=True)
-        ).exclude(pk=self.object.pk).order_by('-data')  # Newest first
+        ).exclude(pk=self.object.pk).order_by('-data')
 
-        # Pagination for related movements
+        # Paginação de movimentações relacionadas
         paginator = Paginator(related_movements, self.paginate_by)
         page = self.request.GET.get('related_page')
         try:
@@ -433,7 +433,59 @@ class MovimentacaoDetailView(LoginRequiredMixin, DetailView):
         except EmptyPage:
             related_movements_paginated = paginator.page(paginator.num_pages)
 
+        # Adiciona detalhes de movimentação financeira e quantidade do produto trocado (para trocas)
+        movimentacao_caixa = None
+        despesa = None
+        quantidade_trocada = None
+        if self.object.motivo == 'troca':
+            # Procura por MovimentacaoCaixa associada (Diferença de preço recebida pelo lojista)
+            movimentacao_caixa = MovimentacaoCaixa.objects.filter(
+                descricao__contains=f'Movimentação {self.object.pk}',
+                is_active=True
+            ).first()
+            # Procura por Despesa associada (diferença de preço paga ao cliente)
+            despesa = Despesa.objects.filter(
+                descricao=f'Troco por motivo de troca',
+                variacao=self.object.produto_trocado,
+                is_active=True,
+                data__gte=self.object.data
+            ).first()
+             # Busca a quantidade do produto substituído
+            if self.object.tipo == 'E' and self.object.produto_trocado:
+                # Para entrada: busca movimentação de saída correspondente(produto_trocado)
+                related_exit = MovimentacaoEstoque.objects.filter(
+                    variacao=self.object.produto_trocado,
+                    tipo='S',
+                    motivo='troca',
+                    is_active=True,
+                    data__gte=self.object.data - timezone.timedelta(seconds=1),
+                    data__lte=self.object.data + timezone.timedelta(seconds=1)
+                ).first()
+                quantidade_trocada = related_exit.quantidade if related_exit else None
+            elif self.object.tipo == 'S':
+                # Para saída: busca movimentação de entrada correspondente onde a variação é produto_trocado
+                related_entry = MovimentacaoEstoque.objects.filter(
+                    produto_trocado=self.object.variacao,
+                    tipo='E',
+                    motivo='troca',
+                    is_active=True,
+                    data__gte=self.object.data - timezone.timedelta(seconds=1),
+                    data__lte=self.object.data + timezone.timedelta(seconds=1)
+                ).first()
+                quantidade_trocada = self.object.quantidade if related_entry else None
+        elif self.object.motivo == 'compra':
+            # Produra por Despesa associada para compra
+            despesa = Despesa.objects.filter(
+                variacao=self.object.variacao,
+                is_active=True,
+                data__gte=self.object.data - timezone.timedelta(seconds=1),
+                data__lte=self.object.data + timezone.timedelta(seconds=1)
+            ).first()
+            
         context['related_movements'] = related_movements_paginated
+        context['movimentacao_caixa'] = movimentacao_caixa
+        context['despesa'] = despesa
+        context['quantidade_trocada'] = quantidade_trocada
         return context
 
 class MovimentacaoEstoqueCreateView(LoginRequiredMixin, CreateView):
@@ -561,8 +613,8 @@ class DespesaListView(LoginRequiredMixin, ListView):
     model = Despesa
     template_name = 'caixa/despesa_list.html'
     context_object_name = 'despesas'
-    queryset = Despesa.objects.filter(is_active=True).order_by('-data')  # Order by newest first
-    paginate_by = 10  # Consistent with other list views
+    queryset = Despesa.objects.filter(is_active=True).order_by('-data') 
+    paginate_by = 10 
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -644,12 +696,12 @@ class MovimentacaoTrocaCreateView(LoginRequiredMixin, View):
             quantidade_substituta = form.cleaned_data['quantidade_substituta']
             diferenca_preco = form.cleaned_data['diferenca_preco']
 
-            # Compute total values and absolute difference
+            # Compute valor total e a diferença
             valor_trocado = variacao_trocada.produto.preco_venda * quantidade_trocada
             valor_substituto = variacao_substituta.produto.preco_venda * quantidade_substituta
             diferenca_preco_abs = abs(diferenca_preco)
 
-            # Store form data in session
+            # Armazena dados do form data na sessão
             request.session['troca_data'] = {
                 'variacao_trocada': str(variacao_trocada.id),
                 'quantidade_trocada': quantidade_trocada,
@@ -703,7 +755,7 @@ class MovimentacaoTrocaCreateView(LoginRequiredMixin, View):
             Variacao.objects.filter(pk=variacao_substituta.pk).update(quantidade=F('quantidade') - quantidade_substituta)
             variacao_substituta.refresh_from_db()
 
-            # Record stock movements
+            # Registra movimentações de estoque
             movimentacao_entrada = MovimentacaoEstoque.objects.create(
                 produto=variacao_trocada.produto,
                 variacao=variacao_trocada,
@@ -724,9 +776,9 @@ class MovimentacaoTrocaCreateView(LoginRequiredMixin, View):
                 diferenca_preco=diferenca_preco
             )
 
-            # Handle financial movements
+            # Lida com movimentações financeiras
             if diferenca_preco > 0:
-                # Client pays the difference: create a MovimentacaoCaixa (Entrada)
+                # Cliente paga diferença: cria a MovimentacaoCaixa (Entrada)
                 movimentacao_caixa = MovimentacaoCaixa.objects.create(
                     tipo='ENTRADA',
                     valor=diferenca_preco,
@@ -737,10 +789,10 @@ class MovimentacaoTrocaCreateView(LoginRequiredMixin, View):
                 )
                 logger.info(f"MovimentacaoCaixa created: ID {movimentacao_caixa.id}, valor {diferenca_preco}, descricao: {movimentacao_caixa.descricao}")
             elif diferenca_preco < 0:
-                # Lojista pays the difference: create a Despesa
+                # Lojista paga diferença ao cliente: cria a Despesa
                 despesa = Despesa.objects.create(
                     valor=abs(diferenca_preco),
-                    descricao=f'Troco por troca (Movimentação {movimentacao_entrada.id})',
+                    descricao=f'Troco por motivo de troca',
                     variacao=variacao_substituta,
                     is_manually_created=True,
                     data=timezone.now()
