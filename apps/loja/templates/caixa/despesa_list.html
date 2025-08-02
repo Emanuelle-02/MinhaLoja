@@ -1,7 +1,7 @@
 {% extends 'base_adm.html' %}
 {% load static %}
 
-{% block title %} - Despesas {% endblock %}
+{% block title %} - {{ title }} {% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4">
@@ -9,13 +9,13 @@
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb" style="background-color: #F0F2F5; border: 1px solid #6B7280; border-radius: 0.35rem;">
             <li class="breadcrumb-item"><a href="{% url 'index' %}" style="color: #374151;">MinhaLoja</a></li>
-            <li class="breadcrumb-item active" aria-current="page" style="color: #374151;">Despesas</li>
+            <li class="breadcrumb-item active" aria-current="page" style="color: #374151;">{{ title }}</li>
         </ol>
     </nav>
 
     <!-- Header and Add Button -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h4 font-weight-bold" style="color: #374151;">Despesas</h2>
+        <h2 class="h4 font-weight-bold" style="color: #374151;">{{ title }}</h2>
         <a href="{% url 'despesa_create' %}" class="btn btn-sm" style="background-color: #8B5CF6; color: #F0F2F5; border-color: #8B5CF6;">
             <i class="fas fa-plus-circle mr-1"></i> Registrar Despesa
         </a>
@@ -32,6 +32,49 @@
             </button>
         </div>
     {% endif %}
+
+    <!-- Filters -->
+    <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280;">
+        <div class="card-header py-3" style="background-color: #F0F2F5; border-bottom: 2px solid #6B7280;">
+            <h6 class="m-0 font-weight-bold" style="color: #374151;">Filtros</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" action="{% url 'despesa_list' %}" class="form-row">
+                <!-- Search Bar -->
+                <div class="col-md-4 mb-3">
+                    <label for="search" style="color: #374151;">Buscar Descrição:</label>
+                    <input type="text" name="search" id="search" value="{{ search_query }}" class="form-control" placeholder="Descrição da despesa" style="border-color: #6B7280;">
+                </div>
+
+                <!-- Period Filter -->
+                <div class="col-md-3 mb-3">
+                    <label for="period" style="color: #374151;">Filtrar por Período:</label>
+                    <select name="period" id="period" class="form-control" style="border-color: #6B7280;">
+                        <option value="" {% if not period %}selected{% endif %}>Todos</option>
+                        <option value="3months" {% if period == '3months' %}selected{% endif %}>Últimos 3 Meses</option>
+                        <option value="6months" {% if period == '6months' %}selected{% endif %}>Últimos 6 Meses</option>
+                        <option value="1year" {% if period == '1year' %}selected{% endif %}>Último Ano</option>
+                    </select>
+                </div>
+
+                <!-- Date Range Filter -->
+                <div class="col-md-2 mb-3">
+                    <label for="start_date" style="color: #374151;">Data Início:</label>
+                    <input type="date" name="start_date" id="start_date" value="{{ start_date }}" class="form-control" style="border-color: #6B7280;">
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="end_date" style="color: #374151;">Data Fim:</label>
+                    <input type="date" name="end_date" id="end_date" value="{{ end_date }}" class="form-control" style="border-color: #6B7280;">
+                </div>
+
+                <div class="col-md-1 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-sm" style="background-color: #8B5CF6; color: #F0F2F5; border-color: #8B5CF6;">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Despesa List -->
     <div class="card mb-4" style="background-color: #F0F2F5; border: 2px solid #6B7280;">
@@ -57,8 +100,6 @@
                                     <td>{{ despesa.descricao }}</td>
                                     <td>R$ {{ despesa.valor|floatformat:2 }}</td>
                                     <td>
-                                        <!-- Depuração: Verifica o valor de is_manually_created -->
-                                        <!-- <p>Debug: is_manually_created = {{ despesa.is_manually_created }}</p> -->
                                         {% if despesa.is_manually_created and despesa.descricao != "Troco por motivo de troca" %}
                                             <a href="{% url 'despesa_update' despesa.pk %}" class="btn btn-sm" style="background-color: #8B5CF6; color: #F0F2F5; border-color: #8B5CF6;">
                                                 <i class="fas fa-edit"></i> Editar
@@ -79,35 +120,33 @@
 
                 <!-- Pagination -->
                 {% if page_obj.has_other_pages %}
-                    <nav aria-label="page navigation">
+                    <nav aria-label="Page navigation">
                         <ul class="pagination justify-content-center mt-3">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=1" aria-label="First">
+                                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if period %}&period={{ period }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" aria-label="First">
                                         <span aria-hidden="true">&laquo;&laquo;</span>
                                     </a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if period %}&period={{ period }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" aria-label="Previous">
                                         <span aria-hidden="true">&laquo;</span>
                                     </a>
                                 </li>
                             {% endif %}
-
                             {% for num in page_obj.paginator.page_range %}
                                 <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                    <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if period %}&period={{ period }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}">{{ num }}</a>
                                 </li>
                             {% endfor %}
-
                             {% if page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if period %}&period={{ period }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" aria-label="Next">
                                         <span aria-hidden="true">&raquo;</span>
                                     </a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if period %}&period={{ period }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" aria-label="Last">
                                         <span aria-hidden="true">&raquo;&raquo;</span>
                                     </a>
                                 </li>

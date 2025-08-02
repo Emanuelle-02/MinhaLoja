@@ -22,6 +22,8 @@ from django.db.models import Q
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
+from datetime import timedelta, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -122,17 +124,64 @@ class ProdutoListView(LoginRequiredMixin, ListView):
     template_name = 'estoque/produto_list.html'
     context_object_name = 'produtos'
     paginate_by = 10
+
     def get_queryset(self):
-        # Anota produtos com estoque total e bandeira de vendas
-        return Produto.objects.filter(is_active=True).annotate(
+        queryset = Produto.objects.filter(is_active=True).annotate(
             total_stock=Sum('variacao__quantidade'),
             has_sales_annotation=Exists(ItemVenda.objects.filter(variacao__produto=OuterRef('pk')))
-        ).order_by('-id')
+        )
+
+        # Search filter
+        search_query = self.request.GET.get('search', '').strip()
+        if search_query:
+            logger.debug(f"Applying search filter: {search_query}")
+            queryset = queryset.filter(
+                Q(nome__icontains=search_query) |
+                Q(variacao__tamanho__icontains=search_query) |
+                Q(variacao__cor__icontains=search_query)
+            ).distinct()
+
+        # Period filter
+        period = self.request.GET.get('period', '')
+        if period:
+            end_date = timezone.now().date()
+            if period == '3months':
+                start_date = end_date - timedelta(days=90)
+            elif period == '6months':
+                start_date = end_date - timedelta(days=180)
+            elif period == '1year':
+                start_date = end_date - timedelta(days=365)
+            else:
+                start_date = None
+            if start_date:
+                queryset = queryset.filter(
+                    movimentacaoestoque__data__gte=start_date,
+                    movimentacaoestoque__data__lte=end_date
+                ).distinct()
+
+        # Custom date range filter
+        start_date = self.request.GET.get('start_date', '')
+        end_date = self.request.GET.get('end_date', '')
+        if start_date and end_date:
+            try:
+                queryset = queryset.filter(
+                    movimentacaoestoque__data__range=[start_date, end_date]
+                ).distinct()
+                logger.debug(f"Applying date range filter: {start_date} to {end_date}")
+            except ValueError as e:
+                logger.error(f"Invalid date format: {str(e)}")
+
+        return queryset.order_by('-id')
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Meus Produtos'
+        context['search_query'] = self.request.GET.get('search', '')
+        context['period'] = self.request.GET.get('period', '')
+        context['start_date'] = self.request.GET.get('start_date', '')
+        context['end_date'] = self.request.GET.get('end_date', '')
         return context
-
+    
 class ProdutoDetailView(LoginRequiredMixin, DetailView):
     model = Produto
     template_name = 'estoque/produto_detail.html'
@@ -235,12 +284,58 @@ class VendaListView(LoginRequiredMixin, ListView):
     model = Venda
     template_name = 'caixa/venda_list.html'
     context_object_name = 'vendas'
-    queryset = Venda.objects.filter(is_active=True).order_by('-data')  # Ordenada da mais recente para mais antiga
-    paginate_by = 10 
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = Venda.objects.filter(is_active=True)
+
+        # Search filter
+        search_query = self.request.GET.get('search', '').strip()
+        if search_query:
+            logger.debug(f"Applying search filter: {search_query}")
+            queryset = queryset.filter(
+                Q(nome_cliente__icontains=search_query)
+            )
+
+        # Period filter (default to 3 months)
+        period = self.request.GET.get('period', '3months')
+        if period:
+            end_date = now().date()
+            if period == '3months':
+                start_date = end_date - timedelta(days=90)
+            elif period == '6months':
+                start_date = end_date - timedelta(days=180)
+            elif period == '1year':
+                start_date = end_date - timedelta(days=365)
+            else:
+                start_date = None
+            if start_date:
+                queryset = queryset.filter(
+                    data__gte=start_date,
+                    data__lte=end_date
+                )
+
+        # Custom date range filter
+        start_date = self.request.GET.get('start_date', '')
+        end_date = self.request.GET.get('end_date', '')
+        if start_date and end_date:
+            try:
+                queryset = queryset.filter(
+                    data__range=[start_date, end_date]
+                )
+                logger.debug(f"Applying date range filter: {start_date} to {end_date}")
+            except ValueError as e:
+                logger.error(f"Invalid date format: {str(e)}")
+
+        return queryset.order_by('-data')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Minhas Vendas'
+        context['search_query'] = self.request.GET.get('search', '')
+        context['period'] = self.request.GET.get('period', '3months')  # Default to 3 months
+        context['start_date'] = self.request.GET.get('start_date', '')
+        context['end_date'] = self.request.GET.get('end_date', '')
         return context
 
 class VendaRegistrarView(LoginRequiredMixin, View):
@@ -398,12 +493,88 @@ class MovimentacaoEstoqueListView(LoginRequiredMixin, ListView):
     model = MovimentacaoEstoque
     template_name = 'estoque/movimentacao_list.html'
     context_object_name = 'movimentacoes'
-    queryset = MovimentacaoEstoque.objects.filter(is_active=True).order_by('-data')  # Mais recente ao mais antigo
     paginate_by = 10
+
+    def get_queryset(self):
+        queryset = MovimentacaoEstoque.objects.filter(is_active=True)
+
+        # Search filter (produto.nome, produto.categoria.nome, variacao.tamanho, variacao.cor with AND logic)
+        search_query = self.request.GET.get('search', '').strip()
+        if search_query:
+            logger.debug(f"Applying search filter: {search_query}")
+            # Split query into terms
+            terms = search_query.split()
+            query = Q()
+            for term in terms:
+                term_query = (
+                    Q(produto__nome__icontains=term) |
+                    Q(produto__categoria__nome__icontains=term, produto__categoria__isnull=False) |  # Handle categoria=None
+                    Q(variacao__tamanho__icontains=term) |
+                    Q(variacao__cor__icontains=term)
+                )
+                query &= term_query
+            queryset = queryset.filter(query).distinct()
+
+        # Period filter (default to 3 months)
+        period = self.request.GET.get('period', '3months')
+        if period:
+            end_date = now().date()
+            if period == '3months':
+                start_date = end_date - timedelta(days=90)
+            elif period == '6months':
+                start_date = end_date - timedelta(days=180)
+            elif period == '1year':
+                start_date = end_date - timedelta(days=365)
+            else:
+                start_date = None
+            if start_date:
+                queryset = queryset.filter(
+                    data__gte=start_date,
+                    data__lte=end_date
+                )
+
+        # Custom date range filter
+        start_date = self.request.GET.get('start_date', '')
+        end_date = self.request.GET.get('end_date', '')
+        if start_date and end_date:
+            try:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d')
+                end_date = datetime.strptime(end_date, '%Y-%m-%d')
+                # Extend end_date to include the full day (until 23:59:59)
+                end_date = end_date.replace(hour=23, minute=59, second=59)
+                queryset = queryset.filter(
+                    data__range=[start_date, end_date]
+                )
+                logger.debug(f"Applying date range filter: {start_date} to {end_date}")
+            except ValueError as e:
+                logger.error(f"Invalid date format: {str(e)}")
+
+        # Motivo filter (default to all)
+        motivo = self.request.GET.get('motivo', '')
+        if motivo:
+            logger.debug(f"Applying motivo filter: {motivo}")
+            if motivo == 'venda':
+                queryset = queryset.filter(motivo__icontains='venda')
+            else:
+                queryset = queryset.filter(motivo=motivo)
+
+        # Tipo filter (default to all)
+        tipo = self.request.GET.get('tipo', '')
+        if tipo:
+            logger.debug(f"Applying tipo filter: {tipo}")
+            queryset = queryset.filter(tipo=tipo)
+
+        return queryset.order_by('-data')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Movimentações de Estoque'
+        context['search_query'] = self.request.GET.get('search', '')
+        context['period'] = self.request.GET.get('period', '3months')
+        context['start_date'] = self.request.GET.get('start_date', '')
+        context['end_date'] = self.request.GET.get('end_date', '')
+        context['motivo'] = self.request.GET.get('motivo', '')
+        context['tipo'] = self.request.GET.get('tipo', '')
         return context
 
 class MovimentacaoDetailView(LoginRequiredMixin, DetailView):
@@ -636,14 +807,64 @@ class DespesaListView(LoginRequiredMixin, ListView):
     model = Despesa
     template_name = 'caixa/despesa_list.html'
     context_object_name = 'despesas'
-    queryset = Despesa.objects.filter(is_active=True).order_by('-data') 
-    paginate_by = 10 
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = Despesa.objects.filter(is_active=True)
+
+        # Search filter
+        search_query = self.request.GET.get('search', '').strip()
+        if search_query:
+            logger.debug(f"Applying search filter: {search_query}")
+            queryset = queryset.filter(
+                Q(descricao__icontains=search_query)
+            )
+
+        # Period filter (default to 3 months)
+        period = self.request.GET.get('period', '3months')
+        if period:
+            end_date = now().date()
+            if period == '3months':
+                start_date = end_date - timedelta(days=90)
+            elif period == '6months':
+                start_date = end_date - timedelta(days=180)
+            elif period == '1year':
+                start_date = end_date - timedelta(days=365)
+            else:
+                start_date = None
+            if start_date:
+                queryset = queryset.filter(
+                    data__gte=start_date,
+                    data__lte=end_date
+                )
+
+        # Custom date range filter
+        start_date = self.request.GET.get('start_date', '')
+        end_date = self.request.GET.get('end_date', '')
+        if start_date and end_date:
+            try:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d')
+                end_date = datetime.strptime(end_date, '%Y-%m-%d')
+                # Extend end_date to include the full day (until 23:59:59)
+                end_date = end_date.replace(hour=23, minute=59, second=59)
+                queryset = queryset.filter(
+                    data__range=[start_date, end_date]
+                )
+                logger.debug(f"Applying date range filter: {start_date} to {end_date}")
+            except ValueError as e:
+                logger.error(f"Invalid date format: {str(e)}")
+
+        return queryset.order_by('-data')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Despesas'
+        context['search_query'] = self.request.GET.get('search', '')
+        context['period'] = self.request.GET.get('period', '3months')  # Default to 3 months
+        context['start_date'] = self.request.GET.get('start_date', '')
+        context['end_date'] = self.request.GET.get('end_date', '')
         return context
-
+    
 class DespesaCreateView(LoginRequiredMixin, CreateView):
     model = Despesa
     form_class = DespesaForm
